@@ -1,7 +1,7 @@
 import telebot
 from flask import Flask
-from mcrcon import MCRcon
 import threading
+import socket
 
 TOKEN = '8737751023:AAGjcTZIADQ86f3AyURHq0KiP5X4UocX4a0'
 ADMIN_ID = 8648741496
@@ -13,9 +13,17 @@ app = Flask(__name__)
 
 def rcon_cmd(command):
     try:
-        with MCRcon(RCON_HOST, RCON_PASS, port=RCON_PORT, timeout=3) as client:
-            response = client.command(command)
-            return response if response else "✅ Выполнено"
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3)
+        sock.connect((RCON_HOST, RCON_PORT))
+        # Логинимся
+        sock.send(b'\x00\x00\x00\x00' + RCON_PASS.encode() + b'\x00')
+        sock.recv(1024)
+        # Отправляем команду
+        sock.send(b'\x00\x00\x00\x00' + command.encode() + b'\x00')
+        response = sock.recv(4096).decode('utf-8', errors='ignore')
+        sock.close()
+        return response.strip() if response.strip() else "✅ Выполнено"
     except Exception as e:
         return f"❌ Ошибка: {e}"
 
@@ -25,14 +33,13 @@ def home():
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    text = (
-        "🛠️ **GrifMC RCON Бот**\n\n"
-        "`!rcon tps` — TPS\n"
-        "`!rcon list` — онлайн\n"
-        "`!rcon say текст` — чат\n"
-        "`!rcon команда` — любая"
+    bot.send_message(message.chat.id, 
+        "🛠️ GrifMC RCON Бот\n"
+        "!rcon tps\n"
+        "!rcon list\n"
+        "!rcon say текст\n"
+        "!rcon команда"
     )
-    bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: True)
 def handle_rcon(message):
@@ -41,25 +48,17 @@ def handle_rcon(message):
         return
     
     text = message.text.strip()
-    if not text.startswith('!rcon'):
-        bot.send_message(message.chat.id, "Используй `!rcon команда`", parse_mode="Markdown")
+    if not text.startswith('!rcon '):
+        bot.send_message(message.chat.id, "Используй `!rcon команда`")
         return
     
     command = text[6:].strip()
-    if not command:
-        bot.send_message(message.chat.id, "❌ `!rcon команда`", parse_mode="Markdown")
-        return
-    
     response = rcon_cmd(command)
     if len(response) > 4000:
         response = response[:3900] + "..."
     
-    bot.send_message(message.chat.id, f"```\n{response}\n```", parse_mode="Markdown")
-
-def run_bot():
-    print("RCON Bot started!")
-    bot.polling(none_stop=True)
+    bot.send_message(message.chat.id, response)
 
 if __name__ == '__main__':
-    threading.Thread(target=run_bot, daemon=True).start()
+    threading.Thread(target=lambda: bot.polling(none_stop=True), daemon=True).start()
     app.run(host='0.0.0.0', port=10000)
