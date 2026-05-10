@@ -1,7 +1,7 @@
 import telebot
 from threading import Thread
 from flask import Flask
-from rcon import Client
+from mcrcon import MCRcon
 
 TOKEN = '8737751023:AAGjcTZIADQ86f3AyURHq0KiP5X4UocX4a0'
 ADMIN_ID = 8648741496
@@ -13,8 +13,8 @@ app = Flask(__name__)
 
 def rcon_cmd(command):
     try:
-        with Client(RCON_HOST, RCON_PORT, passwd=RCON_PASS, timeout=3) as client:
-            response = client.run(command)
+        with MCRcon(RCON_HOST, RCON_PASS, port=RCON_PORT, timeout=3) as client:
+            response = client.command(command)
             return response if response else "✅ Выполнено"
     except Exception as e:
         return f"❌ Ошибка: {e}"
@@ -27,7 +27,6 @@ def home():
 def start(message):
     text = (
         "🛠️ **GrifMC RCON Бот**\n\n"
-        "Команды:\n"
         "`!rcon tps` — TPS сервера\n"
         "`!rcon list` — игроки онлайн\n"
         "`!rcon bcast текст` — объявление\n"
@@ -52,12 +51,12 @@ def handle_rcon(message):
     
     command = text[6:].strip()
     if not command:
-        bot.send_message(message.chat.id, "❌ `!rcon команда`\nНапример: `!rcon tps`", parse_mode="Markdown")
+        bot.send_message(message.chat.id, "❌ `!rcon команда`", parse_mode="Markdown")
         return
     
     response = rcon_cmd(command)
     if len(response) > 4000:
-        response = response[:3900] + "...(обрезано)"
+        response = response[:3900] + "..."
     
     bot.send_message(message.chat.id, f"```\n{response}\n```", parse_mode="Markdown")
 
