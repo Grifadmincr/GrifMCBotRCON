@@ -1,7 +1,7 @@
 import telebot
-from threading import Thread
 from flask import Flask
 from mcrcon import MCRcon
+import threading
 
 TOKEN = '8737751023:AAGjcTZIADQ86f3AyURHq0KiP5X4UocX4a0'
 ADMIN_ID = 8648741496
@@ -27,14 +27,10 @@ def home():
 def start(message):
     text = (
         "🛠️ **GrifMC RCON Бот**\n\n"
-        "`!rcon tps` — TPS сервера\n"
-        "`!rcon list` — игроки онлайн\n"
-        "`!rcon bcast текст` — объявление\n"
-        "`!rcon say текст` — в чат\n"
-        "`!rcon give ник предмет кол-во`\n"
-        "`!rcon ban ник причина`\n"
-        "`!rcon kick ник причина`\n"
-        "`!rcon команда` — любая команда"
+        "`!rcon tps` — TPS\n"
+        "`!rcon list` — онлайн\n"
+        "`!rcon say текст` — чат\n"
+        "`!rcon команда` — любая"
     )
     bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
@@ -65,5 +61,5 @@ def run_bot():
     bot.polling(none_stop=True)
 
 if __name__ == '__main__':
-    Thread(target=run_bot).start()
+    threading.Thread(target=run_bot, daemon=True).start()
     app.run(host='0.0.0.0', port=10000)
